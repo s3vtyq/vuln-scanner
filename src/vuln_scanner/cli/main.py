@@ -18,6 +18,7 @@ from ..formatters.csv import CSVFormatter
 from ..formatters.html import HTMLFormatter
 from ..formatters.sarif import SARIFFormatter
 from ..dashboard.server import run_server
+from ..agents.remediation_agent import RemediationAgent
 
 console = Console()
 
@@ -217,6 +218,57 @@ def monitor(input_path: str, watch: bool):
                 console.print(f"[yellow]Found {len(cves)} CVEs for {package.name}[/yellow]")
 
     console.print("[green]Monitoring complete. Run with --watch for continuous monitoring.[/green]")
+
+
+@cli.command()
+@click.option("-i", "--input", "input_path", required=True, help="Input file with scan results (JSON)")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
+@click.option("--min-severity", type=click.Choice(["low", "medium", "high", "critical"]), default="low", help="Minimum severity to remediate")
+@click.option("--base-branch", default="main", help="Base branch for PRs")
+def remediate(input_path: str, dry_run: bool, min_severity: str, base_branch: str):
+    """Create fix PRs for vulnerabilities (requires GitHub token)."""
+    import json
+    import asyncio
+
+    console.print(f"[blue]Remediating vulnerabilities from {input_path}...[/blue]")
+
+    # Load findings
+    try:
+        with open(input_path, "r") as f:
+            data = json.load(f)
+        findings = [VulnerabilityFinding(**f) for f in data.get("findings", [])]
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        console.print(f"[red]Error loading file: {e}[/red]")
+        sys.exit(1)
+
+    if not findings:
+        console.print("[yellow]No findings to remediate[/yellow]")
+        return
+
+    console.print(f"[green]Loaded {len(findings)} findings[/green]")
+
+    # Create agent
+    agent = RemediationAgent(base_branch=base_branch)
+
+    # Run remediation
+    results = asyncio.run(agent.remediate(findings, dry_run=dry_run, min_severity=min_severity))
+
+    # Display results
+    table = Table(title="Remediation Results")
+    table.add_column("CVE", style="cyan")
+    table.add_column("Package", style="magenta")
+    table.add_column("Status", style="yellow")
+    table.add_column("PR / Message", style="green")
+
+    for r in results:
+        status_color = {"created": "green", "skipped": "yellow", "failed": "red"}.get(r.status, "yellow")
+        pr_info = r.pr_url or r.message
+        table.add_row(r.cve_id, r.package_name, f"[{status_color}]{r.status}[/{status_color}]", pr_info[:60])
+
+    console.print(table)
+
+    created_count = sum(1 for r in results if r.status == "created")
+    console.print(f"\n[green]Created {created_count} fix PRs[/green]" if created_count else "\n[yellow]No PRs created[/yellow]")
 
 
 @cli.command()
