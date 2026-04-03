@@ -18,7 +18,7 @@ VulnScanner bridges the gap between raw vulnerability data and actionable securi
 | **Multi-format scanning** | requirements.txt, package.json, SPDX/CycloneDX SBOMs, Trivy output |
 | **NVD API integration** | Real-time CVE lookup with CVSS scores, severity ratings, and references |
 | **Smart caching** | SQLite-based caching reduces API calls and improves performance |
-| **AI fix suggestions** | Contextual remediation recommendations via MiniMax AI API |
+| **AI fix suggestions** | Contextual remediation recommendations via multiple AI providers (OpenAI, Claude, Gemini, Ollama, MiniMax) |
 | **Multiple outputs** | JSON, CSV, and styled HTML reports |
 | **CI/CD ready** | SARIF format for GitHub Advanced Security integration |
 
@@ -44,10 +44,11 @@ VulnScanner bridges the gap between raw vulnerability data and actionable securi
 │                    └─────────────────┘                          │
 ├─────────────────────────────────────────────────────────────────┤
 │         ┌─────────────────┐         ┌─────────────────────────┐ │
-│         │   NVD API v2   │         │     MiniMax AI API       │ │
+│         │   NVD API v2   │         │   AI Providers          │ │
 │         │ (Rate limited, │         │ (Fix suggestions)       │ │
-│         │   cached)      │         │                         │ │
-│         └─────────────────┘         └─────────────────────────┘ │
+│         │   cached)      │         │ OpenAI/Claude/Gemini/    │ │
+│         └─────────────────┘         │ Ollama/MiniMax          │ │
+│                                     └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -111,7 +112,16 @@ vuln-scanner scan -i requirements.txt --format html -o report.html
 ### Enable AI-powered fix suggestions
 
 ```bash
-export MINIMAX_API_KEY="your-api-key"
+# Set your API key (choose one based on provider)
+export OPENAI_API_KEY="your-openai-key"    # OpenAI GPT models
+export ANTHROPIC_API_KEY="your-claude-key" # Anthropic Claude
+export GEMINI_API_KEY="your-gemini-key"    # Google Gemini
+export MINIMAX_API_KEY="your-minimax-key"  # MiniMax
+
+# Use specific provider
+vuln-scanner scan -i requirements.txt --ai-fix --ai-provider openai
+
+# Or let it auto-detect (defaults to minimax)
 vuln-scanner scan -i requirements.txt --ai-fix
 ```
 
@@ -151,10 +161,12 @@ vuln-scanner monitor -i requirements.txt
 -vuln-scanner scan [OPTIONS]
 
 Options:
-  -i, --input PATH        Input file to scan (required)
-  -o, --output PATH       Output file (default: stdout)
-  -f, --format [json|csv|html]  Output format (default: json)
-  --ai-fix                Enable AI-powered fix suggestions
+  -i, --input PATH                      Input file to scan (required)
+  -o, --output PATH                     Output file (default: stdout)
+  -f, --format [json|csv|html]          Output format (default: json)
+  --ai-fix                              Enable AI-powered fix suggestions
+  --ai-provider [minimax|openai|anthropic|gemini|ollama]
+                                        AI provider for fix suggestions
 ```
 
 #### `enrich` Command
@@ -163,10 +175,12 @@ Options:
 vuln-scanner enrich [OPTIONS]
 
 Options:
-  -i, --input PATH        Input file with scan results (required)
-  -o, --output PATH       Output file (default: stdout)
-  -f, --format [json|csv|html]  Output format (default: json)
-  --ai-fix                Enable AI-powered fix suggestions
+  -i, --input PATH                      Input file with scan results (required)
+  -o, --output PATH                     Output file (default: stdout)
+  -f, --format [json|csv|html]          Output format (default: json)
+  --ai-fix                              Enable AI-powered fix suggestions
+  --ai-provider [minimax|openai|anthropic|gemini|ollama]
+                                        AI provider for fix suggestions
 ```
 
 #### `monitor` Command
@@ -195,9 +209,22 @@ Options:
 
 ## Environment Variables
 
+### AI Providers
+
+| Variable | Provider | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | OpenAI | API key for GPT models |
+| `ANTHROPIC_API_KEY` | Anthropic | API key for Claude models |
+| `GEMINI_API_KEY` | Google | API key for Gemini models |
+| `MINIMAX_API_KEY` | MiniMax | API key for MiniMax models |
+| `OLLAMA_BASE_URL` | Ollama | Base URL for local Ollama (default: `http://localhost:11434`) |
+| `OLLAMA_MODEL` | Ollama | Model name to use (default: `llama3.2`) |
+| `AI_PROVIDER` | All | Default provider when `--ai-provider` not specified (default: `minimax`) |
+
+### NVD API
+
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `MINIMAX_API_KEY` | API key for MiniMax AI fix suggestions | No (AI features disabled without) |
 | `NVD_API_KEY` | API key for NVD (higher rate limits: 6 req/min vs 50/day) | No |
 
 ### Rate Limits
@@ -205,7 +232,11 @@ Options:
 | API | Without Key | With Key |
 |-----|-------------|----------|
 | NVD API v2 | 50 requests/day | 6 requests/minute |
-| MiniMax AI | N/A | Varies by plan |
+| OpenAI | Varies by plan | Varies by plan |
+| Anthropic | Varies by plan | Varies by plan |
+| Gemini | 15 req/min | 1500 req/min |
+| MiniMax | Varies by plan | Varies by plan |
+| Ollama | Local only | N/A |
 
 ---
 
@@ -237,7 +268,9 @@ vuln-scanner/
 │       ├── suggester.py         # Orchestrator
 │       ├── nvd_fixes.py         # NVD configuration extraction
 │       ├── package_fixes.py     # PyPI/npm version lookup
-│       └── ai_suggester.py       # MiniMax AI integration
+│       └── providers/           # AI provider implementations
+│           ├── base.py          # Provider interface
+│           └── __init__.py      # OpenAI, Claude, Gemini, Ollama, MiniMax
 ├── tests/
 │   ├── unit/                    # Unit tests
 │   └── integration/             # Integration tests
@@ -303,7 +336,7 @@ Fix suggestions follow a priority chain:
 
 1. **NVD Configuration Data**: Extracts fix versions from `vulnConfigurations`
 2. **Package Manager**: Queries PyPI/npm for the latest patched version
-3. **AI (Optional)**: MiniMax API generates contextual remediation advice
+3. **AI (Optional)**: AI provider generates contextual remediation advice (OpenAI, Claude, Gemini, Ollama, or MiniMax)
 
 ---
 
