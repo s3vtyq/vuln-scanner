@@ -17,6 +17,7 @@ from ..fix_suggester.suggester import FixSuggester
 from ..formatters.json import JSONFormatter
 from ..formatters.csv import CSVFormatter
 from ..formatters.html import HTMLFormatter
+from ..dashboard.server import run_server
 
 console = Console()
 
@@ -186,6 +187,16 @@ def monitor(input_path: str, watch: bool):
                 console.print(f"[yellow]Found {len(cves)} CVEs for {package.name}[/yellow]")
 
     console.print("[green]Monitoring complete. Run with --watch for continuous monitoring.[/green]")
+
+
+@cli.command()
+@click.option("-h", "--host", default="127.0.0.1", help="Host to bind to")
+@click.option("-p", "--port", default=8000, help="Port to bind to")
+def dashboard(host: str, port: int):
+    """Start the web dashboard to view scan results."""
+    console.print(f"[blue]Starting VulnScanner Dashboard on http://{host}:{port}[/blue]")
+    console.print("[yellow]Press Ctrl+C to stop[/yellow]")
+    run_server(host=host, port=port)
 
 
 def _display_findings_table(findings: list[VulnerabilityFinding]) -> None:

@@ -21,6 +21,8 @@ VulnScanner bridges the gap between raw vulnerability data and actionable securi
 | **AI fix suggestions** | Contextual remediation recommendations via multiple AI providers (OpenAI, Claude, Gemini, Ollama, MiniMax) |
 | **Multiple outputs** | JSON, CSV, and styled HTML reports |
 | **CI/CD ready** | SARIF format for GitHub Advanced Security integration |
+| **Web Dashboard** | Modern UI to visualize scan results |
+| **GitHub Actions** | Built-in CI/CD workflow integration |
 
 ---
 
@@ -141,6 +143,14 @@ vuln-scanner enrich -i trivy-results.json --format html -o enriched-report.html
 vuln-scanner monitor -i requirements.txt
 ```
 
+### View results in the web dashboard
+
+```bash
+vuln-scanner dashboard
+```
+
+Then open http://localhost:8000 and upload your scan JSON.
+
 ---
 
 ## Usage
@@ -152,6 +162,7 @@ vuln-scanner monitor -i requirements.txt
 | `scan` | Scan a dependency file for vulnerabilities |
 | `enrich` | Enrich existing scan results with NVD data |
 | `monitor` | Watch for new CVE disclosures affecting your packages |
+| `dashboard` | Start web dashboard to visualize scan results |
 
 ### Command Options
 
@@ -192,6 +203,49 @@ Options:
   -i, --input PATH        Input file to watch (required)
   --watch                 Poll daily for new CVEs
 ```
+
+#### `dashboard` Command
+
+```
+vuln-scanner dashboard [OPTIONS]
+
+Options:
+  -h, --host TEXT     Host to bind to (default: 127.0.0.1)
+  -p, --port INTEGER  Port to bind to (default: 8000)
+```
+
+---
+
+## GitHub Actions Integration
+
+Add vulnerability scanning to your CI/CD pipeline:
+
+```yaml
+name: Vulnerability Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  vuln-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e .
+      - run: vuln-scanner scan -i requirements.txt -f json -o scan-results.json
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: scan-results.sarif.json
+          category: vuln-scanner
+```
+
+The workflow posts a summary comment on PRs and blocks merges on critical vulnerabilities.
 
 ---
 
@@ -264,6 +318,10 @@ vuln-scanner/
 │   │   ├── json.py              # JSON output
 │   │   ├── csv.py               # CSV output
 │   │   └── html.py              # HTML report with styling
+│   ├── dashboard/               # Web dashboard
+│   │   ├── server.py            # FastAPI app
+│   │   ├── templates/            # HTML templates
+│   │   └── static/              # CSS/JS assets
 │   └── fix_suggester/
 │       ├── suggester.py         # Orchestrator
 │       ├── nvd_fixes.py         # NVD configuration extraction
@@ -274,6 +332,9 @@ vuln-scanner/
 ├── tests/
 │   ├── unit/                    # Unit tests
 │   └── integration/             # Integration tests
+├── .github/
+│   └── workflows/
+│       └── vuln-scan.yml       # GitHub Actions workflow
 ├── pyproject.toml               # Project configuration
 └── README.md
 ```

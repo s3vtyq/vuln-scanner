@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VulnScanner Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VulnScanner Dashboard</h1>
+            <p class="subtitle">Vulnerability scan results viewer</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <section class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <p>Drop scan results JSON here or <label class="file-label"><input type="file" id="fileInput" accept=".json">click to browse</label></p>
+                </div>
+            </section>
+
+            <!-- Results Section (hidden initially) -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h2>Scan Results</h2>
+                    <button class="btn-secondary" id="resetBtn">Upload New</button>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-cards" id="summaryCards">
+                    <div class="card card-critical">
+                        <span class="card-count" id="criticalCount">0</span>
+                        <span class="card-label">Critical</span>
+                    </div>
+                    <div class="card card-high">
+                        <span class="card-count" id="highCount">0</span>
+                        <span class="card-label">High</span>
+                    </div>
+                    <div class="card card-medium">
+                        <span class="card-count" id="mediumCount">0</span>
+                        <span class="card-label">Medium</span>
+                    </div>
+                    <div class="card card-low">
+                        <span class="card-count" id="lowCount">0</span>
+                        <span class="card-label">Low</span>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-container">
+                    <canvas id="severityChart"></canvas>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters">
+                    <input type="text" id="searchInput" placeholder="Search packages, CVEs...">
+                    <select id="severityFilter">
+                        <option value="">All Severities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                    <button class="btn-secondary" id="exportBtn">Export JSON</button>
+                </div>
+
+                <!-- Findings Table -->
+                <div class="table-container">
+                    <table id="findingsTable">
+                        <thead>
+                            <tr>
+                                <th>Package</th>
+                                <th>Version</th>
+                                <th>CVE</th>
+                                <th>Severity</th>
+                                <th>CVSS</th>
+                                <th>Fix</th>
+                            </tr>
+                        </thead>
+                        <tbody id="findingsBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        let currentData = [];
+        let chart = null;
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadSection = document.getElementById('uploadSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const findingsBody = document.getElementById('findingsBody');
+        const searchInput = document.getElementById('searchInput');
+        const severityFilter = document.getElementById('severityFilter');
+        const resetBtn = document.getElementById('resetBtn');
+        const exportBtn = document.getElementById('exportBtn');
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        async function handleFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    currentData = result.findings;
+                    renderResults(result);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                alert('Upload failed: ' + err.message);
+            }
+        }
+
+        function renderResults(result) {
+            uploadSection.style.display = 'none';
+            resultsSection.style.display = 'block';
+
+            // Update summary cards
+            document.getElementById('criticalCount').textContent = result.summary.critical;
+            document.getElementById('highCount').textContent = result.summary.high;
+            document.getElementById('mediumCount').textContent = result.summary.medium;
+            document.getElementById('lowCount').textContent = result.summary.low;
+
+            // Render chart
+            renderChart(result.summary);
+
+            // Render table
+            renderTable(currentData);
+        }
+
+        function renderChart(summary) {
+            const ctx = document.getElementById('severityChart').getContext('2d');
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [summary.critical, summary.high, summary.medium, summary.low],
+                        backgroundColor: ['#dc2626', '#ea580c', '#ca8a04', '#65a30d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function renderTable(findings) {
+            findingsBody.innerHTML = findings.map(f => `
+                <tr>
+                    <td>${escapeHtml(f.package_name || 'N/A')}</td>
+                    <td>${escapeHtml(f.installed_version || 'N/A')}</td>
+                    <td><code>${escapeHtml(f.cve_id || 'N/A')}</code></td>
+                    <td><span class="severity-badge severity-${(f.severity || 'unknown').toLowerCase()}">${f.severity || 'UNKNOWN'}</span></td>
+                    <td>${f.cvss_score ? f.cvss_score.toFixed(1) : 'N/A'}</td>
+                    <td class="fix-cell">${escapeHtml(f.fix_suggestion || f.fixed_version || 'N/A')}</td>
+                </tr>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function filterFindings() {
+            const search = searchInput.value.toLowerCase();
+            const severity = severityFilter.value.toLowerCase();
+
+            const filtered = currentData.filter(f => {
+                const matchesSearch = !search ||
+                    (f.package_name || '').toLowerCase().includes(search) ||
+                    (f.cve_id || '').toLowerCase().includes(search) ||
+                    (f.description || '').toLowerCase().includes(search);
+                const matchesSeverity = !severity || (f.severity || '').toLowerCase() === severity;
+                return matchesSearch && matchesSeverity;
+            });
+
+            renderTable(filtered);
+        }
+
+        searchInput.addEventListener('input', filterFindings);
+        severityFilter.addEventListener('change', filterFindings);
+
+        resetBtn.addEventListener('click', () => {
+            resultsSection.style.display = 'none';
+            uploadSection.style.display = 'block';
+            currentData = [];
+            fileInput.value = '';
+        });
+
+        exportBtn.addEventListener('click', () => {
+            const filtered = getFilteredData();
+            const blob = new Blob([JSON.stringify({findings: filtered}, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'vuln-scan-filtered.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        function getFilteredData() {
+            const search = searchInput.value.toLowerCase();
+            const severity = severityFilter.value.toLowerCase();
+
+            return currentData.filter(f => {
+                const matchesSearch = !search ||
+                    (f.package_name || '').toLowerCase().includes(search) ||
+                    (f.cve_id || '').toLowerCase().includes(search);
+                const matchesSeverity = !severity || (f.severity || '').toLowerCase() === severity;
+                return matchesSearch && matchesSeverity;
+            });
+        }
+    </script>
+</body>
+</html>

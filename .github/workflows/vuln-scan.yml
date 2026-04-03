@@ -1,0 +1,100 @@
+name: Vulnerability Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  vuln-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install vuln-scanner
+        run: |
+          pip install -e .
+
+      - name: Run vulnerability scan
+        id: scan
+        run: |
+          vuln-scanner scan -i requirements.txt -f json -o scan-results.json || true
+        continue-on-error: true
+
+      - name: Post comment to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '${{ github.workspace }}/scan-results.json';
+
+            if (!fs.existsSync(path)) {
+              console.log('No scan results found');
+              return;
+            }
+
+            const results = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const findings = results.findings || [];
+
+            const critical = findings.filter(f => f.severity === 'CRITICAL').length;
+            const high = findings.filter(f => f.severity === 'HIGH').length;
+            const medium = findings.filter(f => f.severity === 'MEDIUM').length;
+            const low = findings.filter(f => f.severity === 'LOW').length;
+
+            const summary = findings.length > 0
+              ? `| Severity | Count |\n|---|---|\n| Critical | ${critical} |\n| High | ${high} |\n| Medium | ${medium} |\n| Low | ${low} |`
+              : 'No vulnerabilities found! :tada:';
+
+            const body = `## VulnScanner Results
+
+**${findings.length} vulnerabilities found**
+
+${summary}
+
+${
+  findings.length > 0
+    ? `| Package | Version | CVE | Severity |\n|---|---|---|---|\n` + findings.slice(0, 10).map(f => `| ${f.package_name} | ${f.installed_version} | ${f.cve_id} | ${f.severity} |`).join('\n') + (findings.length > 10 ? '\n\n_... and ' + (findings.length - 10) + ' more_' : '')
+    : ''
+}
+
+[View full results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: scan-results.sarif.json
+          category: vuln-scanner
+
+      - name: Check for critical vulnerabilities
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -f scan-results.json ]; then
+            CRITICAL=$(grep -o '"severity": "CRITICAL"' scan-results.json | wc -l || echo "0")
+            if [ "$CRITICAL" -gt "0" ]; then
+              echo "Found $CRITICAL critical vulnerabilities"
+              exit 1
+            fi
+          fi
+        env:
+          FAIL_ON_SEVERITY: ${{ inputs.fail-on-severity || 'critical' }}
