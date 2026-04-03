@@ -1,19 +1,26 @@
 """Main fix suggestion orchestrator."""
 
+import os
 from typing import Optional
 from ..nvd.models import VulnerabilityFinding
 from .nvd_fixes import NVDFixExtractor
 from .package_fixes import PackageFixChecker
-from .ai_suggester import MiniMaxFixSuggester
+from .providers import get_provider
 
 
 class FixSuggester:
     """Orchestrates fix suggestions from multiple sources."""
 
-    def __init__(self, use_ai: bool = True):
+    def __init__(self, use_ai: bool = True, ai_provider: Optional[str] = None):
         self.nvd_extractor = NVDFixExtractor()
         self.package_checker = PackageFixChecker()
-        self.ai_suggester = MiniMaxFixSuggester() if use_ai else None
+
+        if use_ai:
+            # CLI flag overrides env var
+            provider_name = ai_provider or os.getenv("AI_PROVIDER", "minimax")
+            self.ai_suggester = get_provider(provider_name)
+        else:
+            self.ai_suggester = None
 
     def suggest_fix(self, finding: VulnerabilityFinding) -> VulnerabilityFinding:
         """

@@ -26,11 +26,11 @@ def init_scanners():
     register_all_scanners()
 
 
-def scan_packages(packages: list[Package], use_ai: bool = False) -> list[VulnerabilityFinding]:
+def scan_packages(packages: list[Package], use_ai: bool = False, ai_provider: Optional[str] = None) -> list[VulnerabilityFinding]:
     """Scan packages and return findings."""
     nvd_client = NVDClient()
     enricher = CVEEnricher(nvd_client)
-    fix_suggester = FixSuggester(use_ai=use_ai)
+    fix_suggester = FixSuggester(use_ai=use_ai, ai_provider=ai_provider)
 
     findings = []
 
@@ -70,7 +70,8 @@ def cli():
 @click.option("-o", "--output", "output_path", help="Output file (default: stdout)")
 @click.option("-f", "--format", "fmt", type=click.Choice(["json", "csv", "html"]), default="json", help="Output format")
 @click.option("--ai-fix", is_flag=True, help="Enable AI-powered fix suggestions")
-def scan(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool):
+@click.option("--ai-provider", type=click.Choice(["minimax", "openai", "anthropic", "gemini", "ollama"]), help="AI provider to use for fix suggestions")
+def scan(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool, ai_provider: Optional[str]):
     """Scan a dependency file for vulnerabilities."""
     console.print(f"[blue]Scanning {input_path}...[/blue]")
 
@@ -87,7 +88,7 @@ def scan(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool):
         packages = scanner.scan(input_path)
         console.print(f"[green]Found {len(packages)} packages[/green]")
 
-        findings = scan_packages(packages, use_ai=ai_fix)
+        findings = scan_packages(packages, use_ai=ai_fix, ai_provider=ai_provider)
 
         # Format output
         output_file = open(output_path, "w") if output_path else sys.stdout
@@ -116,7 +117,8 @@ def scan(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool):
 @click.option("-o", "--output", "output_path", help="Output file (default: stdout)")
 @click.option("-f", "--format", "fmt", type=click.Choice(["json", "csv", "html"]), default="json", help="Output format")
 @click.option("--ai-fix", is_flag=True, help="Enable AI-powered fix suggestions")
-def enrich(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool):
+@click.option("--ai-provider", type=click.Choice(["minimax", "openai", "anthropic", "gemini", "ollama"]), help="AI provider to use for fix suggestions")
+def enrich(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool, ai_provider: Optional[str]):
     """Enrich existing scan results with NVD data and fix suggestions."""
     console.print(f"[blue]Enriching {input_path}...[/blue]")
 
@@ -134,7 +136,7 @@ def enrich(input_path: str, output_path: Optional[str], fmt: str, ai_fix: bool):
     # Enrich
     nvd_client = NVDClient()
     enricher = CVEEnricher(nvd_client)
-    fix_suggester = FixSuggester(use_ai=ai_fix)
+    fix_suggester = FixSuggester(use_ai=ai_fix, ai_provider=ai_provider)
 
     enriched = enricher.enrich_batch(findings)
     for f in enriched:
