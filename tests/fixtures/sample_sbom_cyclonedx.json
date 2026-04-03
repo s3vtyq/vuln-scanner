@@ -1,0 +1,56 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "serialNumber": "urn:uuid:4e4e4e4e-4e4e-4e4e-4e4e-4e4e4e4e4e4e",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2024-01-15T10:30:00Z",
+    "tools": [
+      {
+        "vendor": "vuln-scanner",
+        "name": "vuln-scanner",
+        "version": "0.1.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "sample-application",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "axios",
+      "version": "1.6.0",
+      "purl": "pkg:npm/axios@1.6.0",
+      "licenses": [{"license": {"name": "MIT"}}],
+      "hashes": [{"alg": "SHA-512", "content": "abcdef123456..."}]
+    },
+    {
+      "type": "library",
+      "name": "body-parser",
+      "version": "1.20.2",
+      "purl": "pkg:npm/body-parser@1.20.2",
+      "licenses": [{"license": {"name": "MIT"}}],
+      "dependsOn": ["axios"]
+    },
+    {
+      "type": "library",
+      "name": "qs",
+      "version": "6.11.0",
+      "purl": "pkg:npm/qs@6.11.0",
+      "licenses": [{"license": {"name": "BSD-3-Clause"}}]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/body-parser@1.20.2",
+      "dependsOn": ["pkg:npm/axios@1.6.0"]
+    },
+    {
+      "ref": "pkg:npm/axios@1.6.0",
+      "dependsOn": ["pkg:npm/qs@6.11.0"]
+    }
+  ]
+}
