@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VulnScanner - Dependency Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        header {
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .tab {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: #e2e8f0;
+            background: #1e293b;
+        }
+        .tab.active {
+            color: #e2e8f0;
+            background: #334155;
+        }
+        .upload-section {
+            background: #1e293b;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            text-align: center;
+            border: 2px dashed #334155;
+            margin-bottom: 2rem;
+        }
+        .upload-section.drag-over {
+            border-color: #3b82f6;
+            background: #1e3a5f;
+        }
+        .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 1rem;
+            color: #64748b;
+        }
+        .file-label {
+            color: #3b82f6;
+            cursor: pointer;
+        }
+        .file-label:hover {
+            text-decoration: underline;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .graph-container {
+            background: #1e293b;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            min-height: 500px;
+            position: relative;
+        }
+        #graph {
+            width: 100%;
+            height: 500px;
+        }
+        .node {
+            cursor: pointer;
+        }
+        .node circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        .node text {
+            font-size: 11px;
+            fill: #e2e8f0;
+            pointer-events: none;
+        }
+        .link {
+            stroke: #475569;
+            stroke-opacity: 0.6;
+        }
+        .tooltip {
+            position: absolute;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        .tooltip h4 {
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+        .tooltip .detail {
+            color: #94a3b8;
+            margin: 0.25rem 0;
+        }
+        .tooltip .severity {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .severity-critical { background: #dc2626; color: white; }
+        .severity-high { background: #ea580c; color: white; }
+        .severity-medium { background: #ca8a04; color: white; }
+        .severity-low { background: #65a30d; color: white; }
+        .severity-unknown { background: #64748b; color: white; }
+        .legend {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .results-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .card-count {
+            display: block;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .card-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .card-critical .card-count { color: #dc2626; }
+        .card-high .card-count { color: #ea580c; }
+        .card-medium .card-count { color: #ca8a04; }
+        .card-low .card-count { color: #65a30d; }
+        .card-unknown .card-count { color: #64748b; }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VulnScanner - Dependency Graph</h1>
+            <nav class="tabs">
+                <a href="/" class="tab">View Results</a>
+                <a href="/scan" class="tab active">Scan Files</a>
+            </nav>
+        </header>
+
+        <div class="upload-section" id="uploadArea">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p>Drop dependency file here or <label class="file-label"><input type="file" id="fileInput" accept=".json,.txt">click to browse</label></p>
+            <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
+                Supports: requirements.txt, package.json, SBOM (SPDX/CycloneDX), Trivy JSON
+            </p>
+        </div>
+
+        <div id="resultsSection" style="display: none;">
+            <div class="results-summary" id="summaryCards"></div>
+
+            <div class="graph-container">
+                <div id="graph"></div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #dc2626;"></div>
+                    <span>Critical</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ea580c;"></div>
+                    <span>High</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ca8a04;"></div>
+                    <span>Medium</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #65a30d;"></div>
+                    <span>Low</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #64748b;"></div>
+                    <span>Unknown</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const resultsSection = document.getElementById('resultsSection');
+        const tooltip = document.getElementById('tooltip');
+
+        let currentFindings = [];
+        let simulation = null;
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) uploadFile(file);
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    currentFindings = result.findings;
+                    renderSummary(result.summary);
+                    renderGraph(result.findings);
+                    resultsSection.style.display = 'block';
+                } else {
+                    alert('Scan failed: ' + result.error);
+                }
+            } catch (err) {
+                alert('Scan failed: ' + err.message);
+            }
+        }
+
+        function renderSummary(summary) {
+            const container = document.getElementById('summaryCards');
+            container.innerHTML = `
+                <div class="card card-critical">
+                    <span class="card-count">${summary.critical}</span>
+                    <span class="card-label">Critical</span>
+                </div>
+                <div class="card card-high">
+                    <span class="card-count">${summary.high}</span>
+                    <span class="card-label">High</span>
+                </div>
+                <div class="card card-medium">
+                    <span class="card-count">${summary.medium}</span>
+                    <span class="card-label">Medium</span>
+                </div>
+                <div class="card card-low">
+                    <span class="card-count">${summary.low}</span>
+                    <span class="card-label">Low</span>
+                </div>
+            `;
+        }
+
+        function getSeverityColor(severity) {
+            const s = (severity || 'unknown').toLowerCase();
+            const colors = {
+                critical: '#dc2626',
+                high: '#ea580c',
+                medium: '#ca8a04',
+                low: '#65a30d',
+                unknown: '#64748b'
+            };
+            return colors[s] || colors.unknown;
+        }
+
+        function renderGraph(findings) {
+            // Clear previous graph
+            const graphDiv = document.getElementById('graph');
+            graphDiv.innerHTML = '';
+
+            if (simulation) {
+                simulation.stop();
+            }
+
+            // Create nodes from findings
+            const nodes = findings.map((f, i) => ({
+                id: f.package_name || `package-${i}`,
+                package: f.package_name,
+                version: f.installed_version,
+                severity: f.severity || 'UNKNOWN',
+                cve: f.cve_id,
+                cvss: f.cvss_score,
+                description: f.description,
+                fix: f.fix_suggestion || f.fixed_version
+            }));
+
+            // Create links between packages (for demo, link to "root" if no dependencies)
+            const links = findings.map((f, i) => ({
+                source: 'root',
+                target: f.package_name || `package-${i}`
+            }));
+
+            // Add root node
+            nodes.unshift({
+                id: 'root',
+                package: 'Root',
+                version: '',
+                severity: 'unknown',
+                cve: null,
+                cvss: null
+            });
+
+            const width = graphDiv.clientWidth;
+            const height = 500;
+
+            const svg = d3.select('#graph')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Create force simulation
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(40));
+
+            // Draw links
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('stroke-width', 1);
+
+            // Draw nodes
+            const node = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.append('circle')
+                .attr('r', d => d.id === 'root' ? 20 : 12)
+                .attr('fill', d => getSeverityColor(d.severity));
+
+            node.append('text')
+                .attr('dx', 15)
+                .attr('dy', 4)
+                .text(d => d.package);
+
+            // Tooltip handling
+            node.on('mouseover', (event, d) => {
+                if (d.id === 'root') return;
+                tooltip.style.display = 'block';
+                tooltip.innerHTML = `
+                    <h4>${escapeHtml(d.package)}@${escapeHtml(d.version)}</h4>
+                    ${d.cve ? `<div class="detail">CVE: <code>${escapeHtml(d.cve)}</code></div>` : ''}
+                    <div class="detail">
+                        Severity: <span class="severity severity-${(d.severity || 'unknown').toLowerCase()}">${d.severity || 'UNKNOWN'}</span>
+                    </div>
+                    ${d.cvss ? `<div class="detail">CVSS: ${d.cvss.toFixed(1)}</div>` : ''}
+                    ${d.fix ? `<div class="detail">Fix: ${escapeHtml(d.fix)}</div>` : ''}
+                `;
+            })
+            .on('mousemove', (event) => {
+                tooltip.style.left = (event.pageX + 10) + 'px';
+                tooltip.style.top = (event.pageY + 10) + 'px';
+            })
+            .on('mouseout', () => {
+                tooltip.style.display = 'none';
+            });
+
+            // Update positions on tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
