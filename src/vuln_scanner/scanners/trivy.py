@@ -25,7 +25,7 @@ class TrivyScanner(BaseScanner):
                     "Vulnerabilities" in data or
                     data.get("ArtifactName") is not None
                 )
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except (json.JSONDecodeError, UnicodeDecodeError, FileNotFoundError):
             return False
 
     def scan(self, input_path: str) -> list[Package]:
@@ -42,6 +42,8 @@ class TrivyScanner(BaseScanner):
         # Trivy has different formats depending on type
         if "Results" in data:
             packages.extend(self._parse_results_format(data["Results"]))
+        elif "results" in data:
+            packages.extend(self._parse_results_format(data["results"]))
         elif "Vulnerabilities" in data:
             packages.extend(self._parse_vulns_format(data["Vulnerabilities"]))
 

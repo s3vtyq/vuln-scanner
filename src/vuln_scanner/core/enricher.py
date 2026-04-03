@@ -3,7 +3,9 @@
 from typing import Optional
 from ..nvd.client import NVDClient
 from ..nvd.models import CVEData, VulnerabilityFinding
-from ..scanners.base import Package
+from ..logging_config import get_logger
+
+logger = get_logger("core.enricher")
 
 
 class CVEEnricher:
@@ -43,6 +45,7 @@ class CVEEnricher:
 
     def enrich_batch(self, findings: list[VulnerabilityFinding]) -> list[VulnerabilityFinding]:
         """Enrich multiple findings."""
+        logger.info(f"Enriching batch of {len(findings)} findings")
         return [self.enrich(f) for f in findings]
 
     def _extract_fixed_version(self, cve_data: CVEData) -> Optional[str]:

@@ -7,8 +7,11 @@ from datetime import datetime
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-from .models import CVEData, CVEListResponse
+from .models import CVEData, CVEDescription, CVEReference, CVEConfiguration, CPEMatch
 from .cache import NVDCache
+from ..logging_config import get_logger
+
+logger = get_logger("nvd.client")
 
 
 class NVDAPIRateLimit(Exception):
@@ -107,7 +110,7 @@ class NVDClient:
             return cve_data
 
         except httpx.HTTPError as e:
-            print(f"Error fetching CVE {cve_id}: {e}")
+            logger.error(f"Error fetching CVE {cve_id}: {e}")
             return None
 
     def get_cves_by_cpe(self, cpe_name: str, max_results: int = 100) -> list[CVEData]:
@@ -234,7 +237,7 @@ class NVDClient:
             )
 
         except Exception as e:
-            print(f"Error parsing CVE: {e}")
+            logger.error(f"Error parsing CVE: {e}")
             return None
 
     def _parse_configuration(self, config: dict) -> list[CVEConfiguration]:
@@ -260,7 +263,3 @@ class NVDClient:
                     ))
 
         return configurations
-
-
-# Import at bottom to avoid circular
-from .models import CVEDescription, CVEReference, CVEConfiguration, CPEMatch
