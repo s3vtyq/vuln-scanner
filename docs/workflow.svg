@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#334155"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="600" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text x="450" y="45" font-family="system-ui,sans-serif" font-size="24" font-weight="bold" fill="#f1f5f9" text-anchor="middle">VulnScanner Workflow</text>
+
+  <!-- Input Section -->
+  <g transform="translate(50,80)">
+    <rect width="200" height="120" rx="8" fill="url(#cardGrad)" stroke="#3b82f6" stroke-width="2"/>
+    <text x="100" y="30" font-family="system-ui,sans-serif" font-size="14" font-weight="bold" fill="#3b82f6" text-anchor="middle">INPUT</text>
+    <text x="100" y="55" font-family="monospace" font-size="11" fill="#94a3b8" text-anchor="middle">requirements.txt</text>
+    <text x="100" y="72" font-family="monospace" font-size="11" fill="#94a3b8" text-anchor="middle">package.json</text>
+    <text x="100" y="89" font-family="monospace" font-size="11" fill="#94a3b8" text-anchor="middle">sbom.json</text>
+    <text x="100" y="106" font-family="monospace" font-size="11" fill="#94a3b8" text-anchor="middle">trivy-results.json</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M260 140 L310 140" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6"/>
+  </marker></defs>
+
+  <!-- Scanner Box -->
+  <g transform="translate(320,80)">
+    <rect width="160" height="120" rx="8" fill="url(#cardGrad)" stroke="#10b981" stroke-width="2"/>
+    <text x="80" y="30" font-family="system-ui,sans-serif" font-size="14" font-weight="bold" fill="#10b981" text-anchor="middle">SCANNER</text>
+    <text x="80" y="55" font-family="system-ui,sans-serif" font-size="11" fill="#f1f5f9" text-anchor="middle">Detects format</text>
+    <text x="80" y="72" font-family="system-ui,sans-serif" font-size="11" fill="#f1f5f9" text-anchor="middle">Parses packages</text>
+    <text x="80" y="89" font-family="system-ui,sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Returns:</text>
+    <text x="80" y="106" font-family="monospace" font-size="11" fill="#94a3b8" text-anchor="middle">Package[]</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M490 140 L540 140" stroke="#10b981" stroke-width="2" marker-end="url(#arrow2)"/>
+  <defs><marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L9,3 z" fill="#10b981"/>
+  </marker></defs>
+
+  <!-- NVD Enricher -->
+  <g transform="translate(550,80)">
+    <rect width="160" height="120" rx="8" fill="url(#cardGrad)" stroke="#f59e0b" stroke-width="2"/>
+    <text x="80" y="30" font-family="system-ui,sans-serif" font-size="14" font-weight="bold" fill="#f59e0b" text-anchor="middle">NVD ENRICHER</text>
+    <text x="80" y="55" font-family="system-ui,sans-serif" font-size="11" fill="#f1f5f9" text-anchor="middle">Fetches CVE data</text>
+    <text x="80" y="72" font-family="system-ui,sans-serif" font-size="11" fill="#f1f5f9" text-anchor="middle">CVSS, severity</text>
+    <text x="80" y="89" font-family="system-ui,sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">Cached in SQLite</text>
+  </g>
+
+  <!-- Arrow -->
+  <path d="M720 140 L770 140" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow3)"/>
+  <defs><marker id="arrow3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L9,3 z" fill="#f59e0b"/>
+  </marker></defs>
+
+  <!-- Fix Suggester -->
+  <g transform="translate(780,80)">
+    <rect width="100" height="120" rx="8" fill="url(#cardGrad)" stroke="#ec4899" stroke-width="2"/>
+    <text x="50" y="30" font-family="system-ui,sans-serif" font-size="12" font-weight="bold" fill="#ec4899" text-anchor="middle">FIX</text>
+    <text x="50" y="50" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9" text-anchor="middle">Suggests</text>
+    <text x="50" y="65" font-family="system-ui,sans-serif" font-size="10" fill="#f1f5f9" text-anchor="middle">fixes via:</text>
+    <text x="50" y="85" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">NVD cfg</text>
+    <text x="50" y="98" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">AI (opt)</text>
+  </g>
+
+  <!-- Outputs Section -->
+  <g transform="translate(50,250)">
+    <rect width="830" height="140" rx="8" fill="url(#cardGrad)" stroke="#64748b" stroke-width="1"/>
+    <text x="415" y="25" font-family="system-ui,sans-serif" font-size="14" font-weight="bold" fill="#f1f5f9" text-anchor="middle">OUTPUT FORMATS</text>
+
+    <!-- JSON -->
+    <g transform="translate(60,45)">
+      <rect width="160" height="80" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+      <text x="80" y="25" font-family="system-ui,sans-serif" font-size="12" font-weight="bold" fill="#3b82f6" text-anchor="middle">JSON</text>
+      <text x="80" y="45" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Machine readable</text>
+      <text x="80" y="60" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">CI/CD pipelines</text>
+      <text x="80" y="75" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">SARIF compatible</text>
+    </g>
+
+    <!-- CSV -->
+    <g transform="translate(240,45)">
+      <rect width="160" height="80" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="1"/>
+      <text x="80" y="25" font-family="system-ui,sans-serif" font-size="12" font-weight="bold" fill="#10b981" text-anchor="middle">CSV</text>
+      <text x="80" y="45" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Spreadsheet</text>
+      <text x="80" y="60" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Data analysis</text>
+      <text x="80" y="75" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Reports</text>
+    </g>
+
+    <!-- HTML -->
+    <g transform="translate(420,45)">
+      <rect width="160" height="80" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+      <text x="80" y="25" font-family="system-ui,sans-serif" font-size="12" font-weight="bold" fill="#f59e0b" text-anchor="middle">HTML</text>
+      <text x="80" y="45" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Styled report</text>
+      <text x="80" y="60" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Shareable</text>
+      <text x="80" y="75" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">No browser deps</text>
+    </g>
+
+    <!-- Dashboard -->
+    <g transform="translate(600,45)">
+      <rect width="160" height="80" rx="6" fill="#1e293b" stroke="#ec4899" stroke-width="1"/>
+      <text x="80" y="25" font-family="system-ui,sans-serif" font-size="12" font-weight="bold" fill="#ec4899" text-anchor="middle">DASHBOARD</text>
+      <text x="80" y="45" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Web UI</text>
+      <text x="80" y="60" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Charts</text>
+      <text x="80" y="75" font-family="monospace" font-size="9" fill="#94a3b8" text-anchor="middle">Filter &amp; export</text>
+    </g>
+  </g>
+
+  <!-- AI Providers Section -->
+  <g transform="translate(50,430)">
+    <rect width="830" height="100" rx="8" fill="url(#cardGrad)" stroke="#64748b" stroke-width="1"/>
+    <text x="415" y="25" font-family="system-ui,sans-serif" font-size="14" font-weight="bold" fill="#f1f5f9" text-anchor="middle">AI PROVIDERS (OPTIONAL)</text>
+
+    <!-- MiniMax -->
+    <g transform="translate(60,40)">
+      <rect width="100" height="45" rx="4" fill="#1e293b" stroke="#8b5cf6" stroke-width="1"/>
+      <text x="50" y="18" font-family="system-ui,sans-serif" font-size="10" font-weight="bold" fill="#8b5cf6" text-anchor="middle">MiniMax</text>
+      <text x="50" y="35" font-family="monospace" font-size="8" fill="#94a3b8" text-anchor="middle">Default</text>
+    </g>
+
+    <!-- OpenAI -->
+    <g transform="translate(175,40)">
+      <rect width="100" height="45" rx="4" fill="#1e293b" stroke="#10b981" stroke-width="1"/>
+      <text x="50" y="18" font-family="system-ui,sans-serif" font-size="10" font-weight="bold" fill="#10b981" text-anchor="middle">OpenAI</text>
+      <text x="50" y="35" font-family="monospace" font-size="8" fill="#94a3b8" text-anchor="middle">GPT-4o</text>
+    </g>
+
+    <!-- Anthropic -->
+    <g transform="translate(290,40)">
+      <rect width="100" height="45" rx="4" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+      <text x="50" y="18" font-family="system-ui,sans-serif" font-size="10" font-weight="bold" fill="#f59e0b" text-anchor="middle">Anthropic</text>
+      <text x="50" y="35" font-family="monospace" font-size="8" fill="#94a3b8" text-anchor="middle">Claude</text>
+    </g>
+
+    <!-- Gemini -->
+    <g transform="translate(405,40)">
+      <rect width="100" height="45" rx="4" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+      <text x="50" y="18" font-family="system-ui,sans-serif" font-size="10" font-weight="bold" fill="#3b82f6" text-anchor="middle">Gemini</text>
+      <text x="50" y="35" font-family="monospace" font-size="8" fill="#94a3b8" text-anchor="middle">Google</text>
+    </g>
+
+    <!-- Ollama -->
+    <g transform="translate(520,40)">
+      <rect width="100" height="45" rx="4" fill="#1e293b" stroke="#ec4899" stroke-width="1"/>
+      <text x="50" y="18" font-family="system-ui,sans-serif" font-size="10" font-weight="bold" fill="#ec4899" text-anchor="middle">Ollama</text>
+      <text x="50" y="35" font-family="monospace" font-size="8" fill="#94a3b8" text-anchor="middle">Local</text>
+    </g>
+
+    <!-- Info -->
+    <text x="660" y="65" font-family="system-ui,sans-serif" font-size="10" fill="#94a3b8">Select via:</text>
+    <text x="660" y="80" font-family="monospace" font-size="9" fill="#64748b">--ai-provider flag</text>
+  </g>
+
+  <!-- CLI Commands -->
+  <g transform="translate(50,560)">
+    <text x="0" y="0" font-family="monospace" font-size="11" fill="#64748b">$ vuln-scanner scan -i requirements.txt</text>
+    <text x="380" y="0" font-family="monospace" font-size="11" fill="#64748b">| enrich | monitor | dashboard</text>
+  </g>
+</svg>

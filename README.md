@@ -61,6 +61,8 @@ VulnScanner bridges the gap between raw vulnerability data and actionable securi
 - **Strategy Pattern**: Multiple formatters with a common interface
 - **Fallback Chain**: Fix suggestions cascade from NVD data → Package manager → AI
 
+![Workflow](docs/workflow.svg)
+
 ---
 
 ## Installation
@@ -332,6 +334,8 @@ vuln-scanner/
 ├── tests/
 │   ├── unit/                    # Unit tests
 │   └── integration/             # Integration tests
+├── docs/
+│   └── workflow.svg             # Architecture diagram
 ├── .github/
 │   └── workflows/
 │       └── vuln-scan.yml       # GitHub Actions workflow

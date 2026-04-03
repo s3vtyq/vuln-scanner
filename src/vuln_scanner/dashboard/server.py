@@ -1,33 +1,25 @@
 """Dashboard web server for vuln-scanner."""
 
+import json
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 import uvicorn
 
 
 app = FastAPI(title="VulnScanner Dashboard")
 
-# Paths
-BASE_DIR = Path(__file__).parent
-TEMPLATES_DIR = BASE_DIR / "templates"
+BASE_DIR = Path(__file__).parent.resolve()
+INDEX_HTML = BASE_DIR / "templates" / "index.html"
 STATIC_DIR = BASE_DIR / "static"
-
-# Mount static files
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index():
     """Serve the main dashboard page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return FileResponse(str(INDEX_HTML))
 
 
 @app.post("/api/upload")
@@ -58,7 +50,6 @@ async def upload_scan(file: UploadFile = File(...)) -> JSONResponse:
 
     try:
         contents = await file.read()
-        import json
         data = json.loads(contents)
 
         findings = data.get("findings", [])
@@ -100,6 +91,15 @@ async def upload_scan(file: UploadFile = File(...)) -> JSONResponse:
 async def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+@app.get("/static/{path:str}")
+async def static_files(path: str):
+    """Serve static files."""
+    file_path = STATIC_DIR / path
+    if file_path.exists():
+        return FileResponse(str(file_path))
+    return JSONResponse({"error": "Not found"}, status_code=404)
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8000):
